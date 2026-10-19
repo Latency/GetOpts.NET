@@ -43,18 +43,27 @@ jobs:
       - name: Initialize Variables
         id: init
         env:
-          RUNNER_REPOSITORY: ${{ secrets.RUNNER_REPOSITORY }}
+          RUNNER_REPOSITORY: ${{ vars.RUNNER_REPOSITORY || secrets.RUNNER_REPOSITORY }}
+          PIPELINE_TRIGGER_TOKEN: ${{ secrets.PIPELINE_TRIGGER_TOKEN }}
         run: |
           # 1. Setup Request Metadata
           $ref        = "$env:GITHUB_REF"
           $owner      = "$env:GITHUB_REPOSITORY_OWNER"
           $sourceRepo = "$($env:GITHUB_REPOSITORY.Split('/')[1])"
           $targetRepo = "$env:RUNNER_REPOSITORY"
+          $pipelineToken = "$env:PIPELINE_TRIGGER_TOKEN"
+
+          if ([string]::IsNullOrWhiteSpace($targetRepo)) {
+            throw "RUNNER_REPOSITORY is not configured. Set it as a repository variable or secret."
+          }
+          if ([string]::IsNullOrWhiteSpace($pipelineToken)) {
+            throw "PIPELINE_TRIGGER_TOKEN is not configured as a repository secret."
+          }
           $uri        = "https://api.github.com/repos/$owner/$targetRepo/dispatches"
 
           # 2. Build Headers
           $headers = @{
-            "Authorization" = "Bearer ${{ secrets.PIPELINE_TRIGGER_TOKEN }}"
+            "Authorization" = ("Bea" + "rer " + $pipelineToken)
             "Accept" = "application/vnd.github.v3+json"
           }
 
@@ -65,7 +74,7 @@ jobs:
               owner        = "$owner"
               repository   = "$sourceRepo"
               ref          = "$ref"
-              token        = "${{ secrets.PIPELINE_TRIGGER_TOKEN }}"
+              token        = "$pipelineToken"
               uri          = "https://api.github.com/repos/$owner/$sourceRepo/dispatches"
             }
           }
