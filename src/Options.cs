@@ -1,4 +1,4 @@
-// 04****************************************************************************
+﻿// 04****************************************************************************
 // Project:  NDesk.Options.Core
 // File:     Options.cs
 // Author:   Latency McLaughlin
@@ -97,7 +97,7 @@
 
 using System.Collections;
 
-namespace NDesk.Options;
+namespace GetOpts.NET;
 
 public class OptionValueCollection : IList, IList<string>
 {
@@ -117,19 +117,19 @@ public class OptionValueCollection : IList, IList<string>
     public int  Count      => _values.Count;
     public bool IsReadOnly => false;
 
-    int IList. Add(object      value) => (_values as IList).Add(value);
-    bool IList.Contains(object value) => (_values as IList).Contains(value);
-    int IList. IndexOf(object  value) => (_values as IList).IndexOf(value);
+    int IList. Add(object?      value) => (_values as IList).Add(value);
+    bool IList.Contains(object? value) => (_values as IList).Contains(value);
+    int IList. IndexOf(object?  value) => (_values as IList).IndexOf(value);
 
-    void IList.Insert(int index, object value) => (_values as IList).Insert(index, value);
+    void IList.Insert(int index, object? value) => (_values as IList).Insert(index, value);
 
-    void IList.Remove(object value) => (_values as IList).Remove(value);
+    void IList.Remove(object? value) => (_values as IList).Remove(value);
 
     void IList.RemoveAt(int index) => (_values as IList).RemoveAt(index);
 
     bool IList.IsFixedSize => false;
 
-    object IList.this[int index]
+    object? IList.this[int index]
     {
         get => this[index];
         set => (_values as IList)[index] = value;
@@ -154,7 +154,7 @@ public class OptionValueCollection : IList, IList<string>
         get
         {
             AssertValid(index);
-            return index >= _values.Count ? null : _values[index];
+            return index >= _values.Count ? null! : _values[index];
         }
         set => _values[index] = value;
     }
@@ -172,6 +172,6 @@ public class OptionValueCollection : IList, IList<string>
         if (index >= _c.Option.MaxValueCount)
             throw new ArgumentOutOfRangeException(nameof(index));
         if (_c.Option.OptionValueType == OptionValueType.Required && index >= _values.Count)
-            throw new OptionException(string.Format(_c.OptionSet.MessageLocalizer("Missing required value for option '{0}'."), _c.OptionName), _c.OptionName);
+            throw new OptionException(_c.OptionSet.MessageLocalizer($"Missing required value for option '{_c.OptionName}'."), _c.OptionName);
     }
 }

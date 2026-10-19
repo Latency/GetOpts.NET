@@ -1,12 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	
-	<PropertyGroup>
-		<IsTestProject>true</IsTestProject>
-		<TargetFramework>net9.0</TargetFramework>
-	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\src\NDesk.Options.csproj" />
+		<ProjectReference Include="..\src\GetOpts.NET.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,132 +1,210 @@
-﻿# NDesk.Options
+﻿# GetOpts.NET
+ 
 A callback-based program option parser for C#.
+ 
+| | Description |
+|---|---|
+| ASSEMBLY NAME: | GetOpts.NET |
+| CREATED BY: | [Latency McLaughlin] |
+| UPDATED: | 10/18/2026 |
+| FRAMEWORKS: | net45, net451, net452, net46, net461, net462, net47, net471, net472, net48, net481, netstandard2.0, netstandard2.1, net8.0, net9.0, net10.0, net11.0 |
+| LANGUAGE: | [C#] preview |
+| OUTPUT TYPE: | [Library] [API] |
+| SUPPORTS: | [Visual Studio] |
+| GFX SUBSYS: | [None] |
+| TAGS: | [GetOpt C#] |
+| STATUS: | [![workflow-badge](https://github.com/Latency/GetOpts.NET/actions/workflows/status.yml/badge.svg)](https://github.com/Latency/GetOpts.NET/actions/workflows/status.yml) |
+| LICENSE: | [![license-badge](https://img.shields.io/github/license/Latency/GetOpts.NET?logo=GitHub&style=plastic&logoColor=black&label=License&color=yellowgreen)](https://github.com/Latency/GetOpts.NET/blob/master/MIT-LICENSE.txt) |
+| VERSION: | 1.3.0 |
+ 
+## Navigation
 
+* [Introduction](#introduction)
+* [History](#history)
+* [Solution](#solution)
+* [Usage](#usage)
+* [Installation](#installation)
+* [Report An Issue](#report-an-issue)
+* [Donation](#donation)
+* [License](#license)
 
 ---
 
+## Introduction
 
-<table>
-<tr>
-<th></th>
-<th>Description</th>
-</tr>
-<tr>
-<td>CREATED BY:</td>
-<td>[Latency McLaughlin]</td>
-</tr>
-<tr>
-<td>UPDATED:</td>
-<td>9/18/2024</td>
-</tr>
-<tr>
-<td>FRAMEWORK:</td>
-<td>net452, netstandard2.0, netstandard2.1, net9.0</td>
-</tr>
-<tr>
-<td>LANGUAGE:</td>
-<td>[C#] preview</td>
-</tr>
-<tr>
-<td>OUTPUT TYPE:</td>
-<td>Library [API]</td>
-</tr>
-<tr>
-<td>SUPPORTS:</td>
-<td>[Visual Studio]</td>
-</tr>
-<tr>
-<td>GFX SUBSYS:</td>
-<td>[None]</td>
-</tr>
-<tr>
-<td>TAGS:</td>
-<td>[NDesk.Options C#]</td>
-</tr>
-<tr>
-<td>STATUS:</td>
-<td><a href="https://github.com/Latency/NDesk.Options/actions/workflows/dotnet.yml"><img src="https://github.com/Latency/NDesk.Options/actions/workflows/dotnet.yml/badge.svg"></a></td>
-</tr>
-<tr>
-<td>LICENSE:</td>
-<td><a href="https://github.com/Latency/NDesk.Options/blob/master/MIT-LICENSE.txt"><img src="https://img.shields.io/github/license/Latency/NDesk.Options?style=plastic&logo=GitHub&logoColor=black&label=License&color=yellowgreen"></a></td>
-</tr>
-<tr>
-<td>VERSION:</td>
-<td><a href="https://github.com/Latency/NDesk.Options/releases"><img src="https://img.shields.io/github/v/release/Latency/NDesk.Options?include_prereleases&style=plastic&logo=GitHub&logoColor=black&label=Version&color=blue"></a></td>
-</tr>
-<!-- VERSION: 1.2.9 -->
-</table>
+This project features a callback-based option parser for C#. It takes advantage of C# features such as collection initializers and lambda delegates to provide a short, concise specification of the option names to parse,
+whether or not those options support values, and what to do when the option is encountered.
 
+An `OptionSet` is created with one entry per option: a `|`-separated list of names (`v|verbose`), an optional `=` suffix when the option takes a value (`n|name=`),
+and a callback that runs when the option is encountered. The callback receives the value, or `null` when the option has none.
 
-<hr>
+## History
 
-## Navigation
-* <a href="#introduction">Introduction</a>
-* <a href="#history">History</a>
-* <a href="#solution">Solution</a>
-* <a href="#usage">Usage</a>
-* <a href="#installation">Installation</a>
-* <a href="#license">License</a>
+See:  [getopt](https://en.wikipedia.org/wiki/Getopt)
 
-<hr>
+## Usage
 
-<h2><a name="introduction">Introduction</a></h2>
+### Declaring options
 
-It takes advantage of C# features such as collection initializers and
-lambda delegates to provide a short, concise specification of the option 
-names to parse, whether or not those options support values, and what to do 
-when the option is encountered.  It's entirely callback based:
-
-<h2><a name="history">History</a></h2>
-
-See:  <a href="http://www.ndesk.org/Options">http://www.ndesk.org/Options</a>
-
-<h2><a name="usage">Usage</a></h2>
+Options are declared with a collection initializer or with chained `Add` calls. Each entry is a `|`-separated list of names, an optional value
+suffix, and a callback.
 
 ```csharp
-var verbose = 0;
-var show_help = false;
-var names = new List<string> ();
+var verbose   = 0;
+var showHelp  = false;
+var names     = new List<string>();
 
-var p = new OptionSet () {
-  { "v|verbose", v => { if (v != null) ++verbose; } },
-  { "h|?|help",  v => { show_help = v != null; } },
-  { "n|name=",   v => { names.Add (v); } },
+var p = new OptionSet
+{
+	{ "v|verbose", v => { if (v != null) ++verbose; } },
+	{ "h|?|help",  v => showHelp = v != null },
+	{ "n|name=",   v => names.Add(v!) },
 };
 ```
 
 ```csharp
-int          verbose   = 0;
-bool         show_help = false;
-List<string> names     = new List<string> ();
-
-OptionSet p = new OptionSet ()
-  .Add ("v|verbose", delegate (string v) { if (v != null) ++verbose; })
-  .Add ("h|?|help",  delegate (string v) { show_help = v != null; })
-  .Add ("n|name=",   delegate (string v) { names.Add (v); });
+var p = new OptionSet()
+	.Add("v|verbose", v => { if (v != null) ++verbose; })
+	.Add("h|?|help",  v => showHelp = v != null)
+	.Add("n|name=",   v => names.Add(v!));
 ```
 
-<h2><a name="installation">Installation</a></h2>
+### Parsing arguments
 
-This library can be installed using NuGet found [here](https://www.myget.org/feed/Packages/ndesk-options).
+`Parse` runs the callbacks and returns the arguments that were not consumed by any option.
 
-<h2><a name="license">License</a></h2>
+```csharp
+List<string> extra = p.Parse(["-v", "--name=Alice", "-n", "Bob", "file1.txt", "file2.txt"]);
+// verbose == 1, names == ["Alice", "Bob"], extra == ["file1.txt", "file2.txt"]
+```
 
-The source code for the site is licensed under the MIT license, which you can find in
-the [MIT-LICENSE].txt file.
+Everything after a lone `--` is treated as unprocessed.
 
-All graphical assets are licensed under the
-[Creative Commons Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/).
+### Prototype syntax
+
+| Prototype | Meaning |
+|---|---|
+| `v\|verbose` | Flag. The callback receives the option name, or `null` for `-v-`. |
+| `n\|name=` | Required value. |
+| `l\|library:` | Optional value. The callback receives `null` when no value is given. |
+| `D=` with two parameters | Key/value pair, e.g. `-DNAME=value`. |
+| `<>` | Default handler. It receives every argument that is not an option. |
+
+Values can be supplied as `-name=value`, `-name:value`, `--name value`, or `/name value`.
+Single-character flags can be bundled (`-abc`), and a value option may end a bundle (`-vfFILE`).
+
+### Boolean options
+
+A flag followed by `+` or `-` turns it on or off. In the callback, a `null` value means the option was disabled.
+
+```csharp
+var debug = false;
+var p = new OptionSet { { "debug", v => debug = v != null } };
+
+p.Parse(["-debug"]);   // debug == true
+p.Parse(["-debug+"]);  // debug == true
+p.Parse(["-debug-"]);  // debug == false
+```
+
+### Typed values
+
+The generic `Add<T>` overload converts the value using the type's `TypeConverter`. A failed conversion throws `OptionException`.
+
+```csharp
+var port    = 80;
+var timeout = TimeSpan.Zero;
+
+var p = new OptionSet
+{
+	{ "port=",    (int v)      => port    = v },
+	{ "timeout=", (TimeSpan v) => timeout = v },
+};
+
+p.Parse(["--port=8080", "--timeout=00:00:30"]);
+```
+
+### Key/value options
+
+Use the two-type `Add<TKey, TValue>` overload for options that take a key and a value.
+
+```csharp
+var defines = new Dictionary<string, int>();
+
+var p = new OptionSet
+{
+	{ "D=", (string k, int v) => defines.Add(k, v) },
+};
+
+p.Parse(["-DWIDTH=80", "-D", "HEIGHT=24"]);
+```
+
+### Help text
+
+Pass a description as the second argument, then call `WriteOptionDescriptions`.
+
+```csharp
+var p = new OptionSet
+{
+	{ "n|name=", "the {NAME} of the user", v => name = v },
+	{ "v",       "increase message verbosity", v => ++verbosity },
+	{ "h|help",  "show this message and exit", v => showHelp = v != null },
+};
+
+p.WriteOptionDescriptions(Console.Out);
+```
+
+```text
+  -n, --name=NAME            the NAME of the user
+  -v                         increase message verbosity
+  -h, --help                 show this message and exit
+```
+
+### Error handling
+
+Invalid input throws `OptionException`, for example a missing required value or an unconvertible value.
+`OptionException.OptionName` holds the offending option.
+
+```csharp
+try
+{
+	p.Parse(args);
+}
+catch (OptionException e)
+{
+	Console.Error.WriteLine($"{e.OptionName}: {e.Message}");
+}
+```
+ 
+## Installation
+
+This library can be installed from [NuGet].
+
+## Report An Issue
+
+If you have a patch to contribute, a feature to request, or a bug to report, please post to the [Issue Tracker](https://github.com/Latency/GetOpts.NET/issues).
+
+## Donation
+
+Click the button to donate to my efforts:
+[![Donate via Paypal](https://www.paypal.com/en_US/i/btn/btn_donateCC_LG.gif)](https://paypal.me/Latency2?country.x=US&locale.x=en_US)
+
+## License
+
+The source code for the site is licensed under the MIT license, which you can find in the [MIT-LICENSE].txt file.
+
+---
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job.)
 
+   [NuGet]: <https://github.com/Latency/GetOpts.NET/pkgs/nuget/GetOpts.NET/>
    [.NET]: <https://en.wikipedia.org/wiki/.NET_Framework/>
-   [Console Application]: <https://en.wikipedia.org/wiki/Console_application>
+   [Visual Studio]: <https://en.wikipedia.org/wiki/Microsoft_Visual_Studio/>
+   [Library]: <https://en.wikipedia.org/wiki/Software_library/>
+   [Latency McLaughlin]: <https://www.linkedin.com/in/Latency/>
    [API]: <https://en.wikipedia.org/wiki/Application_programming_interface>
    [C#]: <https://en.wikipedia.org/wiki/C_Sharp_(programming_language)>
    [DLL]: <https://en.wikipedia.org/wiki/Dynamic-link_library>
-   [Latency McLaughlin]: <https://www.linkedin.com/in/Latency/>
    [MIT-License]: <http://choosealicense.com/licenses/mit/>
-   [NuGet]: <https://www.nuget.org/>
-   [NDesk.Options.Core]: <https://github.com/Latency/NDesk.Options.Core/>
-   [Visual Studio]: <https://en.wikipedia.org/wiki/Microsoft_Visual_Studio/>
+   [WPF]: <https://en.wikipedia.org/wiki/Windows_Presentation_Foundation/>
+   [WinForms]: <https://en.wikipedia.org/wiki/Windows_Forms/>
+   [Unit Tests]: <https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-csharp-with-xunit>

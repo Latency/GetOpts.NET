@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/GetOpts.NET.csproj" />
+  <Project Path="Unit Tests/Unit Tests.csproj">
+    <BuildDependency Project="src/GetOpts.NET.csproj" />
+  </Project>
+</Solution>

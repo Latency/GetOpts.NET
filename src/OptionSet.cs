@@ -9,7 +9,7 @@ using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace NDesk.Options;
+namespace GetOpts.NET;
 
 public class OptionSet(Converter<string, string> localizer) : KeyedCollection<string, Option>
 {
@@ -22,7 +22,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
     public OptionSet() : this(f => f)
     { }
 
-    public Converter<string, string> MessageLocalizer { get; } = localizer;
+    public Converter<string, string> MessageLocalizer { get; } = localizer ?? throw new ArgumentNullException(nameof(localizer));
 
     protected override string GetKeyForItem(Option item)
     {
@@ -43,11 +43,11 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
 
     protected override void RemoveItem(int index)
     {
-        base.RemoveItem(index);
         var p = Items[index];
+        base.RemoveItem(index);
         // KeyedCollection.RemoveItem() handles the 0th item
         for (var i = 1; i < p.Names.Length; ++i)
-            Dictionary.Remove(p.Names[i]);
+            Dictionary?.Remove(p.Names[i]);
     }
 
     protected override void SetItem(int index, Option item)
@@ -67,14 +67,14 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
             // KeyedCollection.InsertItem/SetItem handle the 0th name.
             for (var i = 1; i < option.Names.Length; ++i)
             {
-                Dictionary.Add(option.Names[i], option);
+                Dictionary?.Add(option.Names[i], option);
                 added.Add(option.Names[i]);
             }
         }
         catch (Exception)
         {
             foreach (var name in added)
-                Dictionary.Remove(name);
+                Dictionary?.Remove(name);
             throw;
         }
     }
@@ -85,9 +85,9 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         return this;
     }
 
-    public OptionSet Add(string prototype, Action<string> action) => Add(prototype, null, action);
+    public OptionSet Add(string prototype, Action<string?> action) => Add(prototype, null, action);
 
-    public OptionSet Add(string prototype, string description, Action<string> action)
+    public OptionSet Add(string prototype, string? description, Action<string?> action)
     {
         if (action == null)
             throw new ArgumentNullException(nameof(action));
@@ -100,9 +100,9 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         return this;
     }
 
-    public OptionSet Add(string prototype, OptionAction<string, string> action) => Add(prototype, null, action);
+    public OptionSet Add(string prototype, Action<string?, string?> action) => Add(prototype, null, action);
 
-    public OptionSet Add(string prototype, string description, OptionAction<string, string> action)
+    public OptionSet Add(string prototype, string? description, Action<string?, string?> action)
     {
         if (action == null)
             throw new ArgumentNullException(nameof(action));
@@ -117,17 +117,20 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
 
     public OptionSet Add<T>(string prototype, Action<T> action) => Add(prototype, null, action);
 
-    public OptionSet Add<T>(string prototype, string description, Action<T> action) => Add(new ActionOption<T>(prototype, description, action));
+    public OptionSet Add<T>(string prototype, string? description, Action<T> action) => Add(new ActionOption<T>(prototype, description, action));
 
-    public OptionSet Add<TKey, TValue>(string prototype, OptionAction<TKey, TValue> action) => Add(prototype, null, action);
+    public OptionSet Add<TKey, TValue>(string prototype, Action<TKey, TValue> action) => Add(prototype, null, action);
 
-    public OptionSet Add<TKey, TValue>(string prototype, string description, OptionAction<TKey, TValue> action) => Add(new ActionOption<TKey, TValue>(prototype, description, action));
+    public OptionSet Add<TKey, TValue>(string prototype, string? description, Action<TKey, TValue> action) => Add(new ActionOption<TKey, TValue>(prototype, description, action));
 
     protected virtual OptionContext CreateOptionContext() => new(this);
 
 
     public List<string> Parse(IEnumerable<string> arguments)
     {
+        if (arguments == null)
+            throw new ArgumentNullException(nameof(arguments));
+
         var c           = CreateOptionContext();
         c.OptionIndex   = -1;
         var process     = true;
@@ -151,7 +154,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
     }
 
 
-    private static bool Unprocessed(ICollection<string> extra, Option def, OptionContext c, string argument)
+    private static bool Unprocessed(ICollection<string> extra, Option? def, OptionContext c, string argument)
     {
         if (def == null)
         {
@@ -165,7 +168,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         return false;
     }
 
-    protected bool GetOptionParts(string argument, out string flag, out string name, out string sep, out string value)
+    protected bool GetOptionParts(string argument, out string? flag, out string? name, out string? sep, out string? value)
     {
         if (argument == null)
             throw new ArgumentNullException(nameof(argument));
@@ -188,13 +191,18 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
 
     protected virtual bool Parse(string argument, OptionContext c)
     {
+        if (argument == null)
+            throw new ArgumentNullException(nameof(argument));
+        if (c == null)
+            throw new ArgumentNullException(nameof(c));
+
         if (c.Option != null)
         {
             ParseValue(argument, c);
             return true;
         }
 
-        if (!GetOptionParts(argument, out var f, out var n, out var s, out var v))
+        if (!GetOptionParts(argument, out var f, out var n, out var s, out var v) || f == null || n == null)
             return false;
 
         if (!Contains(n))
@@ -220,20 +228,21 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         return true;
     }
 
-    private void ParseValue(string option, OptionContext c)
+    private void ParseValue(string? option, OptionContext c)
     {
+        var co = c.Option!;
         if (option != null)
-            foreach (var o in c.Option.ValueSeparators != null
-                                  ? option.Split(c.Option.ValueSeparators, StringSplitOptions.None)
+            foreach (var o in co.ValueSeparators != null
+                                  ? option.Split(co.ValueSeparators, StringSplitOptions.None)
                                   :
                                   [
                                       option
                                   ])
                 c.OptionValues.Add(o);
-        if (c.OptionValues.Count == c.Option.MaxValueCount || c.Option.OptionValueType == OptionValueType.Optional)
-            c.Option.Invoke(c);
-        else if (c.OptionValues.Count > c.Option.MaxValueCount)
-            throw new OptionException(MessageLocalizer($"Error: Found {c.OptionValues.Count} option values when expecting {c.Option.MaxValueCount}."), c.OptionName);
+        if (c.OptionValues.Count == co.MaxValueCount || co.OptionValueType == OptionValueType.Optional)
+            co.Invoke(c);
+        else if (c.OptionValues.Count > co.MaxValueCount)
+            throw new OptionException(MessageLocalizer($"Error: Found {c.OptionValues.Count} option values when expecting {co.MaxValueCount}."), c.OptionName);
     }
 
     private bool ParseBool(string option, string n, OptionContext c)
@@ -246,7 +255,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         var v = n[^1] == '+' ? option : null;
         c.OptionName = option;
         c.Option     = p;
-        c.OptionValues.Add(v);
+        c.OptionValues.Add(v!);
         p.Invoke(c);
         return true;
     }
@@ -260,7 +269,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
             var opt = f + n[i];
             var rn  = n[i].ToString();
             if (!Contains(rn))
-                return i == 0 ? false : throw new OptionException(string.Format(MessageLocalizer("Cannot bundle unregistered option '{0}'."), opt), opt);
+                return i == 0 ? false : throw new OptionException(MessageLocalizer($"Cannot bundle unregistered option '{opt}'."), opt);
 
             var p = this[rn];
             switch (p.OptionValueType)
@@ -296,6 +305,9 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
 
     public void WriteOptionDescriptions(TextWriter o)
     {
+        if (o == null)
+            throw new ArgumentNullException(nameof(o));
+
         foreach (var p in this)
         {
             var written = 0;
@@ -380,7 +392,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         o.Write(s);
     }
 
-    private static string GetArgumentName(int index, int maxIndex, string description)
+    private static string GetArgumentName(int index, int maxIndex, string? description)
     {
         if (description == null)
             return maxIndex == 1 ? "VALUE" : "VALUE" + (index + 1);
@@ -401,7 +413,7 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         return maxIndex == 1 ? "VALUE" : "VALUE" + (index + 1);
     }
 
-    private static string GetDescription(string description)
+    private static string GetDescription(string? description)
     {
         if (description == null)
             return string.Empty;
@@ -521,23 +533,23 @@ public class OptionSet(Converter<string, string> localizer) : KeyedCollection<st
         return sep == -1 || end == description.Length ? end : sep;
     }
 
-    private sealed class ActionOption(string prototype, string description, int count, Action<OptionValueCollection> action) : Option(prototype, description, count)
+    private sealed class ActionOption(string prototype, string? description, int count, Action<OptionValueCollection> action) : Option(prototype, description, count)
     {
         private readonly Action<OptionValueCollection> _action = action ?? throw new ArgumentNullException(nameof(action));
 
         protected override void OnParseComplete(OptionContext c) => _action(c.OptionValues);
     }
 
-    private sealed class ActionOption<T>(string prototype, string description, Action<T> action) : Option(prototype, description, 1)
+    private sealed class ActionOption<T>(string prototype, string? description, Action<T> action) : Option(prototype, description, 1)
     {
         private readonly Action<T> _action = action ?? throw new ArgumentNullException(nameof(action));
 
         protected override void OnParseComplete(OptionContext c) => _action(Parse<T>(c.OptionValues[0], c));
     }
 
-    private sealed class ActionOption<TKey, TValue>(string prototype, string description, OptionAction<TKey, TValue> action) : Option(prototype, description, 2)
+    private sealed class ActionOption<TKey, TValue>(string prototype, string? description, Action<TKey, TValue> action) : Option(prototype, description, 2)
     {
-        private readonly OptionAction<TKey, TValue> _action = action ?? throw new ArgumentNullException(nameof(action));
+        private readonly Action<TKey, TValue> _action = action ?? throw new ArgumentNullException(nameof(action));
 
         protected override void OnParseComplete(OptionContext c) => _action(Parse<TKey>(c.OptionValues[0], c), Parse<TValue>(c.OptionValues[1], c));
     }

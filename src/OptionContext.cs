@@ -5,7 +5,7 @@
 // Date:     04/04/2024
 // ****************************************************************************
 
-namespace NDesk.Options;
+namespace GetOpts.NET;
 
 public class OptionContext
 {
@@ -15,9 +15,9 @@ public class OptionContext
         OptionValues = new(this);
     }
 
-    public Option Option { get; set; }
+    public Option? Option { get; set; }
 
-    public string OptionName { get; set; }
+        public string? OptionName { get; set; }
 
     public int OptionIndex { get; set; }
 

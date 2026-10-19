@@ -1,0 +1,133 @@
+name: Dispatch Build
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on v1.0, v2.1.4, etc.
+
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        type: choice
+        description: 'Select logging/debug level'
+        required: true
+        default: 'None'
+        options:
+          - 'None'
+          - 'Debug'
+          - 'Verbose'
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          skip_after_successful_duplicate: 'true'
+
+  dispatch_build:
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    name: Dispatch Build Event
+    runs-on: ubuntu-latest
+
+    # This sets the default shell to pwsh for all steps in this job
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Initialize Variables
+        id: init
+        env:
+          RUNNER_REPOSITORY: ${{ secrets.RUNNER_REPOSITORY }}
+        run: |
+          # 1. Setup Request Metadata
+          $ref        = "$env:GITHUB_REF"
+          $owner      = "$env:GITHUB_REPOSITORY_OWNER"
+          $sourceRepo = "$($env:GITHUB_REPOSITORY.Split('/')[1])"
+          $targetRepo = "$env:RUNNER_REPOSITORY"
+          $uri        = "https://api.github.com/repos/$owner/$targetRepo/dispatches"
+
+          # 2. Build Headers
+          $headers = @{
+            "Authorization" = "Bearer ${{ secrets.PIPELINE_TRIGGER_TOKEN }}"
+            "Accept" = "application/vnd.github.v3+json"
+          }
+
+          # 3. Construct Payload
+          $body = @{
+            event_type     = "trigger-external-build"
+            client_payload = @{
+              owner        = "$owner"
+              repository   = "$sourceRepo"
+              ref          = "$ref"
+              token        = "${{ secrets.PIPELINE_TRIGGER_TOKEN }}"
+              uri          = "https://api.github.com/repos/$owner/$sourceRepo/dispatches"
+            }
+          }
+
+          # Export scalar variables
+          "ref=$ref" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "owner=$owner" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "targetRepo=$targetRepo" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "sourceRepo=$sourceRepo" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "uri=$uri" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+          # Export headers using heredoc syntax
+          $bodyJson = $body | ConvertTo-Json -Compress
+          "body=$bodyJson" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $headersJson = $headers | ConvertTo-Json -Compress
+          "headers=$headersJson" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Debug Output
+        id: debug-output
+        if: ${{ github.event.inputs.debug_mode == 'Debug' || github.event.inputs.debug_mode == 'Verbose' }}
+        run: |
+          Write-Host "::debug::Running in debug mode!"
+          Write-Host "=================== PIPELINE CONFIGURATION ==================="
+          Write-Host "Debug Input Value : ${{ github.event.inputs.debug_mode }}"
+          Write-Host "Target Owner      : ${{ steps.init.outputs.owner }}"
+          Write-Host "Target Repository : ${{ steps.init.outputs.targetRepo }}"
+          Write-Host "Repository URI    : ${{ steps.init.outputs.uri }}"
+          Write-Host "Source Repository : ${{ steps.init.outputs.sourceRepo }}"
+          Write-Host "Source Git Ref    : ${{ steps.init.outputs.ref }}"
+          Write-Host "Request Headers   :" 
+          '${{ steps.init.outputs.headers }}' | ConvertFrom-Json | ConvertTo-Json | Write-Host
+          Write-Host "Request Body      :"
+          '${{ steps.init.outputs.body }}' | ConvertFrom-Json | ConvertTo-Json | Write-Host
+          Write-Host "=============================================================="
+
+      - name: Verbose System Information
+        id: verbose-system-info
+        if: ${{ github.event.inputs.debug_mode == 'Verbose' }}
+        run: |
+          Write-Host "Printing extra verbose system/context information..."
+          Write-Host "The full GitHub context:"
+          Write-Host '${{ toJSON(github) }}'
+
+      - name: Emit Repository Dispatch
+        id: emit-repo-dispatch
+        run: |
+          $uri     = '${{ steps.init.outputs.uri }}'
+          $headers = '${{ steps.init.outputs.headers }}' | ConvertFrom-Json -AsHashtable
+          $body    = '${{ steps.init.outputs.body }}'
+
+          # 4. Invoke API Request
+          Write-Host "Sending dispatch trigger to private repository: $owner/$targetRepo..."
+          try {
+              $response = Invoke-WebRequest -Uri $uri -Method Post -Headers $headers -Body $body -ContentType "application/json"
+
+              if ($response.StatusCode -eq 204) {
+                  Write-Host "Successfully dispatched remote build pipeline!"
+              } else {
+                  Write-Warning "Received unexpected status code: $($response.StatusCode)"
+              }
+          }
+          catch {
+              Write-Error "Failed to dispatch build event. Error details: $_"
+              exit 1
+          }

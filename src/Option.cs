@@ -7,7 +7,7 @@
 
 using System.ComponentModel;
 
-namespace NDesk.Options;
+namespace GetOpts.NET;
 
 public abstract class Option
 {
@@ -17,10 +17,10 @@ public abstract class Option
         ':'
     ];
 
-    protected Option(string prototype, string description) : this(prototype, description, 1)
+    protected Option(string prototype, string? description) : this(prototype, description, 1)
     { }
 
-    protected Option(string prototype, string description, int maxValueCount)
+    protected Option(string prototype, string? description, int maxValueCount)
     {
         if (prototype == null)
             throw new ArgumentNullException(nameof(prototype));
@@ -45,7 +45,7 @@ public abstract class Option
 
     public string Prototype { get; }
 
-    public string Description { get; }
+    public string? Description { get; }
 
     public OptionValueType OptionValueType { get; }
 
@@ -53,24 +53,27 @@ public abstract class Option
 
     internal string[] Names { get; }
 
-    internal string[] ValueSeparators { get; private set; }
+    internal string[]? ValueSeparators { get; private set; }
 
     public string[] GetNames() => (string[])Names.Clone();
 
     public string[] GetValueSeparators() => ValueSeparators == null ? [] : (string[])ValueSeparators.Clone();
 
-    protected static T Parse<T>(string value, OptionContext c)
+    protected static T Parse<T>(string? value, OptionContext c)
     {
+        if (c == null)
+            throw new ArgumentNullException(nameof(c));
+
         var conv = TypeDescriptor.GetConverter(typeof(T));
-        T   t    = default;
+        T   t    = default!;
         try
         {
             if (value != null)
-                t = (T)conv.ConvertFromString(value);
+                t = (T)conv.ConvertFromString(value)!;
         }
         catch (Exception e)
         {
-            throw new OptionException(string.Format(c.OptionSet.MessageLocalizer("Could not convert string `{0}' to type {1} for option `{2}'."), value, typeof(T).Name, c.OptionName), c.OptionName, e);
+            throw new OptionException(c.OptionSet.MessageLocalizer($"Could not convert string `{value}' to type {typeof(T).Name} for option `{c.OptionName}'.") ?? throw new InvalidOperationException(), c.OptionName, e);
         }
 
         return t;
@@ -84,13 +87,13 @@ public abstract class Option
         {
             var name = Names[i];
             if (name.Length == 0)
-                throw new ArgumentException("Empty option names are not supported.", "prototype");
+                throw new ArgumentException("Empty option names are not supported.");
 
             var end = name.IndexOfAny(NameTerminator);
             if (end == -1)
                 continue;
             Names[i] = name[..end];
-            type     = type == '\0' || type == name[end] ? name[end] : throw new ArgumentException($"Conflicting option types: '{type}' vs. '{name[end]}'.", "prototype");
+            type     = type == '\0' || type == name[end] ? name[end] : throw new ArgumentException($"Conflicting option types: '{type}' vs. '{name[end]}'.");
             AddSeparators(name, end, seps);
         }
 
@@ -99,8 +102,8 @@ public abstract class Option
 
         ValueSeparators = MaxValueCount switch
         {
-            <= 1 when seps.Count != 0 => throw new ArgumentException($"Cannot provide key/value separators for Options taking {MaxValueCount} value(s).", "prototype"),
-            > 1                       => seps.Count == 0 ? [":", "="] : seps.Count == 1 && seps[0].Length == 0 ? null : [.. seps],
+            <= 1 when seps.Count != 0 => throw new ArgumentException($"Cannot provide key/value separators for Options taking {MaxValueCount} value(s)."),
+            > 1                       => seps.Count == 0 ? [":", "="] : seps is [{ Length: 0 }] ? null : [.. seps],
             _                         => ValueSeparators
         };
 
@@ -136,6 +139,9 @@ public abstract class Option
 
     public void Invoke(OptionContext c)
     {
+        if (c == null)
+            throw new ArgumentNullException(nameof(c));
+
         OnParseComplete(c);
         c.OptionName = null;
         c.Option     = null;

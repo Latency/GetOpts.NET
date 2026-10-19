@@ -1,0 +1,20 @@
+name: Build Status
+
+on:
+  repository_dispatch:
+    types: [trigger-external-status]    
+  
+jobs:
+
+  postback:
+    runs-on: [ubuntu-latest]
+    steps:
+    - name: Update Build Status
+      run: |
+        if [ "${{ github.event.client_payload.status }}" = "true" ]; then
+          echo "Remote build was successful!"
+          exit 0  # Passes the step
+        else
+          echo "Remote build failed!"
+          exit 1  # Fails the step and halts subsequent jobs
+        fi
