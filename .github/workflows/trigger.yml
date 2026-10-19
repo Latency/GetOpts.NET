@@ -92,6 +92,25 @@ jobs:
           $headersJson = $headers | ConvertTo-Json -Compress
           "headers=$headersJson" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
+          $safeHeaders = @{} + $headers
+          $safeHeaders.Authorization = "[REDACTED]"
+          $safeBody = @{} + $body
+          $safeClientPayload = @{} + $body.client_payload
+          $safeClientPayload.token = "[REDACTED]"
+          $safeBody.client_payload = $safeClientPayload
+
+          Write-Host "Init step variables:"
+          Write-Host "ref=$ref"
+          Write-Host "owner=$owner"
+          Write-Host "sourceRepo=$sourceRepo"
+          Write-Host "targetRepo=$targetRepo"
+          Write-Host "pipelineToken=[REDACTED]"
+          Write-Host "uri=$uri"
+          Write-Host "headers=$($safeHeaders | ConvertTo-Json -Compress)"
+          Write-Host "body=$($safeBody | ConvertTo-Json -Compress)"
+          Write-Host "bodyJson=$($safeBody | ConvertTo-Json -Compress)"
+          Write-Host "headersJson=$($safeHeaders | ConvertTo-Json -Compress)"
+
       - name: Debug Output
         id: debug-output
         if: ${{ github.event.inputs.debug_mode == 'Debug' || github.event.inputs.debug_mode == 'Verbose' }}
